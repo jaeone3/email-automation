@@ -1,8 +1,9 @@
 {
-    "subject": "테스트 이메일",
-    "body": "안녕하세요,\n\n자동 전송 테스트입니다.\n\n감사합니다.",
+    "subject": "오늘 한국어 공부 어때요? 🇰🇷",
+    "body": "안녕하세요!\n\n오늘 5분만 투자하면\n한국어 실력이 쑥쑥 늘어요.\n\n오늘의 주제: \"카페에서 주문하기\"\n\n지금 시작하기:\nhttps://kokoai.com/app\n\n감사합니다!\nKoko AI 팀 드림",
     "send_delay_min": 5,
     "send_delay_max": 15,
     "batch_size": 20,
-    "batch_pause": 120
+    "batch_pause": 120,
+    "unsubscribe_base_url": "https://jaeone3.github.io/email-unsubscribe/unsubscribe.html"
 }

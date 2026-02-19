@@ -1,7 +1,11 @@
 import os
 import sys
 import secrets
+import re
 from supabase import create_client
+
+# 이메일 형식 검증용 정규식
+EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
 
 
 def get_supabase_client():
@@ -33,9 +37,9 @@ def get_recipients():
         sys.exit(1)
     
     try:
-        # email과 unsubscribe_token만 조회 (name 제거)
+        # email, name, unsubscribe_token 조회
         response = client.table("users") \
-            .select("email, unsubscribe_token") \
+            .select("email, name, unsubscribe_token") \
             .eq("unsubscribed", False) \
             .execute()
     except Exception as e:
@@ -56,8 +60,23 @@ def get_recipients():
         sys.exit(1)
 
     recipients = []
+    seen_emails = set()  # 중복 제거용
+    
     for row in response.data:
         email = row["email"]
+        
+        # 이메일 형식 검증
+        if not EMAIL_REGEX.match(email):
+            print(f"[경고] 유효하지 않은 이메일 건너뜀: {email}")
+            continue
+        
+        # 중복 제거
+        if email in seen_emails:
+            print(f"[경고] 중복 이메일 건너뜀: {email}")
+            continue
+        seen_emails.add(email)
+        
+        name = row.get("name")  # 이름 가져오기
         token = row.get("unsubscribe_token")
         
         # 토큰이 없으면 생성
@@ -68,7 +87,7 @@ def get_recipients():
                     .update({"unsubscribe_token": token}) \
                     .eq("email", email) \
                     .execute()
-                print(f"[DB] {email}에 토큰 생성: {token}")
+                print(f"[DB] {email}에 수신거부 토큰 생성 완료")
             except Exception as e:
                 print(f"[경고] {email} 토큰 저장 실패: {e}")
                 print("  → 수신거부 링크가 작동하지 않을 수 있습니다.")
@@ -76,6 +95,7 @@ def get_recipients():
         
         recipients.append({
             "email": email,
+            "name": name,  # 이름 추가
             "unsubscribe_token": token
         })
 

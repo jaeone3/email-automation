@@ -22,33 +22,25 @@ class EmailSender:
         self.delay_max = config.get("send_delay_max", 15)
         self.batch_size = config.get("batch_size", 20)
         self.batch_pause = config.get("batch_pause", 120)
+        self.unsubscribe_base_url = config.get("unsubscribe_base_url", "")
 
         self.server = None
         self.logger = self._setup_logger()
 
     def _setup_logger(self):
-        log_dir = Path(__file__).parent / "logs"
-        log_dir.mkdir(exist_ok=True)
-
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        log_file = log_dir / f"send_{timestamp}.log"
-
-        logger = logging.getLogger(f"email_sender_{timestamp}")
+        logger = logging.getLogger("email_sender")
         logger.setLevel(logging.INFO)
-
-        file_handler = logging.FileHandler(log_file, encoding="utf-8")
-        file_handler.setFormatter(
-            logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
-        )
-        logger.addHandler(file_handler)
-
-        console_handler = logging.StreamHandler()
-        console_handler.setFormatter(
-            logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
-        )
-        logger.addHandler(console_handler)
-
+        
+        if not logger.handlers:
+            handler = logging.StreamHandler()
+            handler.setFormatter(
+                logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+            )
+            logger.addHandler(handler)
+        
         return logger
+
+
 
     def connect(self):
         self.logger.info("Gmail SMTP 서버에 연결 중...")
@@ -73,13 +65,17 @@ class EmailSender:
 
     def _build_message(self, recipient):
         email = recipient["email"]
+        name = recipient.get("name")  # 이름 가져오기
         token = recipient.get("unsubscribe_token", "")
         
-        # 본문 그대로 사용 (개인화 없음)
-        personalized_body = self.body
+        # 이름 개인화
+        if name:
+            personalized_body = f"{name}님, " + self.body
+        else:
+            personalized_body = self.body  # 이름 없으면 그대로
         
-        # 수신거부 URL (GitHub Pages)
-        unsubscribe_url = f"https://jaeone3.github.io/email-unsubscribe/unsubscribe.html?token={token}"
+        # 수신거부 URL (config에서 가져옴)
+        unsubscribe_url = f"{self.unsubscribe_base_url}?token={token}"
         
         # 본문 하단에 수신거부 링크 추가
         personalized_body += f"\n\n---\n수신거부: {unsubscribe_url}"
@@ -91,67 +87,47 @@ class EmailSender:
         msg["Date"] = formatdate(localtime=True)
         msg["Message-ID"] = make_msgid(domain=self.address.split("@")[1])
         
-        # 수신거부 헤더 (실제 작동하는 URL)
-        msg["List-Unsubscribe"] = f"<{unsubscribe_url}>"
-        msg["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click"
+        # 수신거부 헤더 (웹 링크 + mailto 백업)
+        msg["List-Unsubscribe"] = f"<{unsubscribe_url}>, <mailto:{self.address}?subject=unsubscribe>"
+        # List-Unsubscribe-Post는 GitHub Pages가 POST 못 받으므로 제거
         
         return msg
 
     def send_email(self, recipient):
+        if self.server is None:
+            raise smtplib.SMTPServerDisconnected("SMTP 서버에 연결되지 않았습니다")
+        
         msg = self._build_message(recipient)
         email = recipient["email"]
-        if self.server is not None:
-            self.server.sendmail(self.address, email, msg.as_string())
+        self.server.sendmail(self.address, email, msg.as_string())
         self.logger.info(f"발송 성공: {email}")
 
     def send_all(self):
-        # 진행상황 파일 경로
-        log_dir = Path(__file__).parent / "logs"
-        log_dir.mkdir(exist_ok=True)
-        progress_file = log_dir / f"progress_{date.today().isoformat()}.txt"
-        
-        # 이미 발송된 이메일 불러오기
-        already_sent = set()
-        if progress_file.exists():
-            already_sent = set(progress_file.read_text(encoding='utf-8').strip().splitlines())
-            self.logger.info(f"이전 진행상황: {len(already_sent)}명 이미 발송됨")
-        
-        # 남은 수신자만 필터링
-        remaining = [r for r in self.recipients if r['email'] not in already_sent]
-        total_original = len(self.recipients)
-        total = len(remaining)
+        total = len(self.recipients)
         success = 0
         fail = 0
+        failed_list = []
 
-        if total == 0:
-            self.logger.info("모든 수신자에게 이미 발송 완료")
-            return {"success": len(already_sent), "fail": 0, "total": total_original}
-
-        self.logger.info(f"총 {total}명에게 발송 시작 ({len(already_sent)}명 건너뜀)")
+        self.logger.info(f"총 {total}명에게 발송 시작")
         self.logger.info(f"제목: {self.subject}")
 
-        for i, recipient in enumerate(remaining, 1):
+        for i, recipient in enumerate(self.recipients, 1):
             try:
                 self.send_email(recipient)
                 success += 1
-                
-                # 발송 성공 시 즉시 진행상황 기록
-                with open(progress_file, "a", encoding="utf-8") as f:
-                    f.write(f"{recipient['email']}\n")
-                    
             except smtplib.SMTPServerDisconnected:
                 self.logger.warning("연결이 끊어졌습니다. 재연결 시도 중...")
                 self.connect()
                 try:
                     self.send_email(recipient)
                     success += 1
-                    
-                    # 재시도 성공 시에도 기록
-                    with open(progress_file, "a", encoding="utf-8") as f:
-                        f.write(f"{recipient['email']}\n")
-                        
                 except Exception as e:
                     self.logger.error(f"발송 실패 (재시도 후): {recipient['email']} - {e}")
+                    failed_list.append({
+                        "email": recipient['email'],
+                        "name": recipient.get('name', 'N/A'),
+                        "error": str(e)
+                    })
                     fail += 1
                     
             except smtplib.SMTPAuthenticationError as e:
@@ -172,10 +148,20 @@ class EmailSender:
                     break
                 else:
                     self.logger.error(f"발송 실패: {recipient['email']} - {e}")
+                    failed_list.append({
+                        "email": recipient['email'],
+                        "name": recipient.get('name', 'N/A'),
+                        "error": f"SMTPDataError: {e}"
+                    })
                     fail += 1
                     
             except Exception as e:
                 self.logger.error(f"발송 실패: {recipient['email']} - {e}")
+                failed_list.append({
+                    "email": recipient['email'],
+                    "name": recipient.get('name', 'N/A'),
+                    "error": str(e)
+                })
                 fail += 1
 
             # 배치 분할: batch_size마다 긴 대기
@@ -189,6 +175,10 @@ class EmailSender:
                 self.logger.info(f"[{i}/{total}] 다음 발송까지 {delay:.1f}초 대기")
                 time.sleep(delay)
 
-        total_success = len(already_sent) + success
-        self.logger.info(f"발송 완료 - 성공: {total_success}, 실패: {fail}, 총: {total_original}")
-        return {"success": total_success, "fail": fail, "total": total_original}
+        self.logger.info(f"발송 완료 - 성공: {success}, 실패: {fail}, 총: {total}")
+        return {
+            "success": success, 
+            "fail": fail, 
+            "total": total,
+            "failed_list": failed_list
+        }

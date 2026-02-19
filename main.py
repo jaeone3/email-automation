@@ -1,11 +1,9 @@
 import json
 import sys
-import argparse
+import os
 from pathlib import Path
-from datetime import date
 
 from dotenv import load_dotenv
-import os
 
 from sender import EmailSender
 from db import get_recipients
@@ -18,7 +16,28 @@ def load_config():
         sys.exit(1)
 
     with open(config_path, "r", encoding="utf-8") as f:
-        return json.load(f)
+        config = json.load(f)
+    
+    # 필수 필드 검증
+    for key in ("subject", "body"):
+        if key not in config or not config[key].strip():
+            print(f"[오류] config.json에 '{key}' 필드가 비어있거나 없습니다.")
+            sys.exit(1)
+    
+    # 발송 간격 검증
+    delay_min = config.get("send_delay_min", 5)
+    delay_max = config.get("send_delay_max", 15)
+    if delay_min > delay_max:
+        print(f"[오류] send_delay_min ({delay_min})이 send_delay_max ({delay_max})보다 큽니다.")
+        sys.exit(1)
+    
+    # 배치 크기 검증 (Gmail 안전)
+    batch_size = config.get("batch_size", 20)
+    if batch_size > 100:
+        print(f"[오류] batch_size ({batch_size})는 100 이하여야 합니다 (Gmail 안전 한도).")
+        sys.exit(1)
+    
+    return config
 
 
 def load_credentials():
@@ -32,9 +51,7 @@ def load_credentials():
         print("[오류] .env 파일에 GMAIL_ADDRESS와 GMAIL_APP_PASSWORD를 설정하세요.")
         sys.exit(1)
 
-    if address == "your_email@gmail.com":
-        print("[오류] .env 파일에서 실제 Gmail 주소와 앱 비밀번호로 변경하세요.")
-        sys.exit(1)
+
 
     return address, password
 
@@ -52,43 +69,13 @@ def print_summary(config, recipients, address):
     print("=" * 50)
 
 
-def confirm():
-    answer = input("\n위 내용으로 발송하시겠습니까? (y/n): ").strip().lower()
-    return answer == "y"
 
 
-def check_already_sent_today():
-    """오늘 이미 발송했는지 체크"""
-    log_dir = Path(__file__).parent / "logs"
-    log_dir.mkdir(exist_ok=True)
-    
-    lock_file = log_dir / f"sent_{date.today().isoformat()}.lock"
-    
-    if lock_file.exists():
-        print()
-        print("=" * 50)
-        print(f"  ❌ 오늘({date.today()}) 이미 발송을 완료했습니다!")
-        print("=" * 50)
-        print(f"  락파일: {lock_file}")
-        print(f"  내용: {lock_file.read_text(encoding='utf-8')}")
-        print()
-        print("  다시 발송하려면 위 파일을 삭제하세요.")
-        print("=" * 50)
-        sys.exit(0)
-    
-    return lock_file
+
+
 
 
 def main():
-    # 명령행 인자 파싱
-    parser = argparse.ArgumentParser(description="이메일 자동 발송 프로그램")
-    parser.add_argument("--yes", "-y", action="store_true", 
-                        help="확인 없이 바로 발송 (자동화용)")
-    args = parser.parse_args()
-    
-    # 중복 발송 체크
-    lock_file = check_already_sent_today()
-    
     config = load_config()
     address, password = load_credentials()
 
@@ -100,26 +87,65 @@ def main():
 
     print_summary(config, recipients, address)
 
-    # --yes 플래그가 없으면 확인 요청
-    if not args.yes and not confirm():
-        print("발송이 취소되었습니다.")
-        sys.exit(0)
-
     print()
     with EmailSender(address, password, config) as sender:
         result = sender.send_all()
 
-    # 발송 성공 시 락파일 생성
-    from datetime import datetime
-    lock_content = f"발송 완료: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
-    lock_content += f"성공: {result['success']} / 실패: {result['fail']} / 총: {result['total']}"
-    lock_file.write_text(lock_content, encoding='utf-8')
+    # GitHub Actions Summary 생성
+    if os.getenv('GITHUB_ACTIONS'):
+        summary_file = os.getenv('GITHUB_STEP_SUMMARY')
+        if summary_file:
+            with open(summary_file, 'a', encoding='utf-8') as f:
+                f.write("## 📧 이메일 발송 결과\n\n")
+                f.write(f"- ✅ **성공**: {result['success']}명\n")
+                f.write(f"- ❌ **실패**: {result['fail']}명\n")
+                f.write(f"- 📊 **총 대상**: {result['total']}명\n")
+                
+                if result['total'] > 0:
+                    success_rate = result['success'] / result['total'] * 100
+                    f.write(f"- 📈 **성공률**: {success_rate:.1f}%\n\n")
+                
+                # 실패 목록 표 추가
+                if result['fail'] > 0 and result['failed_list']:
+                    f.write("### ❌ 실패한 수신자\n\n")
+                    
+                    # 컬럼 너비 계산
+                    max_email_len = max(len(item['email']) for item in result['failed_list'])
+                    max_email_len = max(max_email_len, len('이메일'))
+                    
+                    max_name_len = max(len(str(item.get('name', 'N/A'))) for item in result['failed_list'])
+                    max_name_len = max(max_name_len, len('이름'))
+                    
+                    # 표 헤더
+                    f.write(f"| {'이메일':<{max_email_len}} | {'이름':<{max_name_len}} | 에러 |\n")
+                    f.write(f"|{'-'*(max_email_len+2)}|{'-'*(max_name_len+2)}|------|\n")
+                    
+                    # 표 내용
+                    for item in result['failed_list']:
+                        email = item['email']
+                        name = str(item.get('name', 'N/A'))
+                        error = item['error'][:80] + '...' if len(item['error']) > 80 else item['error']
+                        f.write(f"| {email:<{max_email_len}} | {name:<{max_name_len}} | `{error}` |\n")
 
     print()
     print("=" * 50)
     print(f"  발송 결과: 성공 {result['success']} / 실패 {result['fail']} / 총 {result['total']}")
-    print("  상세 로그는 logs/ 폴더를 확인하세요.")
+    
+    # 콘솔에 실패 목록 출력
+    if result['fail'] > 0 and result['failed_list']:
+        print()
+        print("  실패한 수신자:")
+        for item in result['failed_list']:
+            name_display = item.get('name', 'N/A')
+            error_short = item['error'][:60] + '...' if len(item['error']) > 60 else item['error']
+            print(f"    - {item['email']} ({name_display}): {error_short}")
+    
+    print("  상세 로그는 GitHub Actions 대시보드를 확인하세요.")
     print("=" * 50)
+    
+    # 실패가 있으면 workflow failed
+    if result['fail'] > 0:
+        sys.exit(1)
 
 
 if __name__ == "__main__":
