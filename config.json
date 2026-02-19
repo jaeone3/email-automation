@@ -1,0 +1,8 @@
+{
+    "subject": "테스트 이메일",
+    "body": "안녕하세요,\n\n자동 전송 테스트입니다.\n\n감사합니다.",
+    "send_delay_min": 5,
+    "send_delay_max": 15,
+    "batch_size": 20,
+    "batch_pause": 120
+}
