@@ -2,8 +2,8 @@ name: Daily Email Send
 
 on:
   schedule:
-    # 매일 오전 9시 40분 (UTC 0시 40분 = 한국 시간 9시 40분)
-    - cron: '40 0 * * *'
+    # 매일 오전 9시 (UTC 0시 = 한국 시간 9시)
+    - cron: '0 0 * * *'
   workflow_dispatch:  # 수동 실행 가능
 
 # 동시 실행 방지

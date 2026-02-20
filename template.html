@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0; padding:0; background-color:#ffffff; font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR','Helvetica Neue',sans-serif;">
+
+<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#ffffff; padding:20px 0;">
+<tr>
+<td align="center">
+
+<!-- 메인 컨테이너 -->
+<table width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff; max-width:600px;">
+
+  <!-- 브랜드명 -->
+  <tr>
+    <td style="padding:40px 40px 24px 40px; text-align:center;">
+      <span style="font-size:21px; font-weight:700; color:#4b4b4b; letter-spacing:0.5px;">{brand_name}</span>
+    </td>
+  </tr>
+
+  <!-- CTA 버튼 -->
+  <tr>
+    <td style="padding:0 90px 56px 90px; text-align:center;">
+      <a href="{cta_url}" style="display:block; background-color:#58CC02; color:#ffffff; font-size:16px; font-weight:700; padding:15px 0; border-radius:14px; text-decoration:none; text-align:center;">
+        {cta_text}
+      </a>
+    </td>
+  </tr>
+
+  <!-- 로고 이미지 -->
+  <tr>
+    <td style="text-align:center; padding:0 40px 24px 40px;">
+      <img src="cid:koko_logo" alt="Koko AI" width="130" style="display:block; margin:0 auto;">
+    </td>
+  </tr>
+
+  <!-- 메인 텍스트 -->
+  <tr>
+    <td style="padding:0 40px 8px 40px; text-align:center;">
+      <p style="font-size:23px; font-weight:800; color:#3c3c3c; margin:0; line-height:1.4;">
+        {greeting}
+      </p>
+    </td>
+  </tr>
+
+  <!-- 서브 텍스트 -->
+  <tr>
+    <td style="padding:2px 40px 0 40px; text-align:center;">
+      <p style="font-size:14px; font-weight:400; color:#afafaf; margin:0; line-height:1.6;">
+        {body}
+      </p>
+    </td>
+  </tr>
+
+  <!-- 구분선 -->
+  <tr>
+    <td style="padding:44px 40px 0 40px;">
+      <hr style="border:none; border-top:1px solid #ebebeb; margin:0;">
+    </td>
+  </tr>
+
+  <!-- 연속 학습 섹션 (주황색 박스) -->
+  <tr>
+    <td style="padding:28px 36px 0 36px;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#FF9600; border-radius:16px;">
+        <tr>
+          <td style="padding:22px 28px; vertical-align:middle;">
+            <span style="font-size:15px; font-weight:800; color:#ffffff;">현재 연속 학습 일수: {streak_count}일</span>
+          </td>
+          <td width="56" style="padding:22px 28px 22px 0; text-align:right; vertical-align:middle;">
+            <span style="font-size:30px;">&#128293;</span>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+
+  <!-- 주간 캘린더 -->
+  <tr>
+    <td style="padding:20px 70px 32px 70px;">
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td align="center" style="font-size:13px; font-weight:500; color:#afafaf; padding:8px 0 8px 0;">금</td>
+          <td align="center" style="font-size:13px; font-weight:500; color:#afafaf; padding:8px 0 8px 0;">토</td>
+          <td align="center" style="font-size:13px; font-weight:500; color:#afafaf; padding:8px 0 8px 0;">일</td>
+          <td align="center" style="font-size:13px; font-weight:500; color:#afafaf; padding:8px 0 8px 0;">월</td>
+          <td align="center" style="font-size:13px; font-weight:500; color:#afafaf; padding:8px 0 8px 0;">화</td>
+          <td align="center" style="font-size:13px; font-weight:500; color:#afafaf; padding:8px 0 8px 0;">수</td>
+          <td align="center" style="font-size:13px; font-weight:500; color:#afafaf; padding:8px 0 8px 0;">목</td>
+        </tr>
+        <tr>
+          <td align="center" style="padding:4px;"><span style="display:inline-block; width:34px; height:34px; border-radius:50%; background-color:#e0e0e0;">&nbsp;</span></td>
+          <td align="center" style="padding:4px;"><span style="display:inline-block; width:34px; height:34px; border-radius:50%; background-color:#e0e0e0;">&nbsp;</span></td>
+          <td align="center" style="padding:4px;"><span style="display:inline-block; width:34px; height:34px; border-radius:50%; background-color:#e0e0e0;">&nbsp;</span></td>
+          <td align="center" style="padding:4px;"><span style="display:inline-block; width:34px; height:34px; border-radius:50%; background-color:#e0e0e0;">&nbsp;</span></td>
+          <td align="center" style="padding:4px;"><span style="display:inline-block; width:34px; height:34px; border-radius:50%; background-color:#e0e0e0;">&nbsp;</span></td>
+          <td align="center" style="padding:4px;"><span style="display:inline-block; width:34px; height:34px; border-radius:50%; background-color:#e0e0e0;">&nbsp;</span></td>
+          <td align="center" style="padding:4px;"><span style="display:inline-block; width:34px; height:34px; border-radius:50%; border:2px dashed #FF9600; background-color:#ffffff;">&nbsp;</span></td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+
+  <!-- 소셜 미디어 아이콘 -->
+  <tr>
+    <td style="padding:8px 40px 16px 40px; text-align:center;">
+      <a href="{social_instagram}" style="text-decoration:none; margin:0 7px; display:inline-block; vertical-align:middle;">
+        <img src="cid:icon_instagram" alt="Instagram" width="22" height="22" style="display:block;">
+      </a>
+      <a href="{social_twitter}" style="text-decoration:none; margin:0 7px; display:inline-block; vertical-align:middle;">
+        <img src="cid:icon_x" alt="X" width="22" height="22" style="display:block;">
+      </a>
+      <a href="{social_facebook}" style="text-decoration:none; margin:0 7px; display:inline-block; vertical-align:middle;">
+        <img src="cid:icon_facebook" alt="Facebook" width="22" height="22" style="display:block;">
+      </a>
+      <a href="{social_tiktok}" style="text-decoration:none; margin:0 7px; display:inline-block; vertical-align:middle;">
+        <img src="cid:icon_tiktok" alt="TikTok" width="22" height="22" style="display:block;">
+      </a>
+    </td>
+  </tr>
+
+  <!-- 푸터 -->
+  <tr>
+    <td style="padding:8px 40px 40px 40px; text-align:center;">
+      <p style="font-size:11px; font-weight:400; color:#afafaf; margin:0 0 6px 0; line-height:1.7;">
+        본 메일은 회원님이 {brand_name} 알림 메일 수신에 동의하였기에 발송된 메일입니다.
+      </p>
+      <a href="{unsubscribe_url}" style="font-size:11px; font-weight:400; color:#afafaf; text-decoration:underline;">
+        수신거부
+      </a>
+    </td>
+  </tr>
+
+</table>
+<!-- 메인 컨테이너 끝 -->
+
+</td>
+</tr>
+</table>
+
+</body>
+</html>

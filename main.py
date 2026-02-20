@@ -3,6 +3,10 @@ import sys
 import os
 from pathlib import Path
 
+# Windows 콘솔 이모지 출력 대응
+if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+
 from dotenv import load_dotenv
 
 from sender import EmailSender

@@ -3,6 +3,8 @@ import random
 import time
 import logging
 from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.image import MIMEImage
 from email.utils import formatdate, make_msgid
 from datetime import datetime, date
 from pathlib import Path
@@ -23,9 +25,41 @@ class EmailSender:
         self.batch_size = config.get("batch_size", 20)
         self.batch_pause = config.get("batch_pause", 120)
         self.unsubscribe_base_url = config.get("unsubscribe_base_url", "")
+        self.brand_name = config.get("brand_name", "")
+        self.cta_text = config.get("cta_text", "")
+        self.cta_url = config.get("cta_url", "")
+        self.social_instagram = config.get("social_instagram", "#")
+        self.social_twitter = config.get("social_twitter", "#")
+        self.social_facebook = config.get("social_facebook", "#")
+        self.social_tiktok = config.get("social_tiktok", "#")
 
         self.server = None
         self.logger = self._setup_logger()
+        self.template = self._load_template()
+        self.logo_data = self._load_logo()
+        self.icons = self._load_icons()
+
+    def _load_template(self):
+        template_path = Path(__file__).parent / "template.html"
+        with open(template_path, "r", encoding="utf-8") as f:
+            return f.read()
+
+    def _load_logo(self):
+        logo_path = Path(__file__).parent / "koko.png"
+        if logo_path.exists():
+            with open(logo_path, "rb") as f:
+                return f.read()
+        return None
+
+    def _load_icons(self):
+        icons = {}
+        icon_dir = Path(__file__).parent
+        for name in ["instagram", "x", "facebook", "tiktok"]:
+            icon_path = icon_dir / f"icon_{name}.png"
+            if icon_path.exists():
+                with open(icon_path, "rb") as f:
+                    icons[name] = f.read()
+        return icons
 
     def _setup_logger(self):
         logger = logging.getLogger("email_sender")
@@ -70,32 +104,64 @@ class EmailSender:
 
     def _build_message(self, recipient):
         email = recipient["email"]
-        name = recipient.get("name")  # 이름 가져오기
+        name = recipient.get("display_name")
         token = recipient.get("unsubscribe_token", "")
-        
-        # 이름 개인화
+
+        # 메인 텍스트
+        greeting = "오늘 한국어를 배워보세요!"
+
+        # 제목 개인화 ({name} → 실제 이름)
         if name:
-            personalized_body = f"{name}님, " + self.body
+            subject = self.subject.replace("{name}", name)
         else:
-            personalized_body = self.body  # 이름 없으면 그대로
-        
-        # 수신거부 URL (config에서 가져옴)
+            subject = self.subject.replace("{name}님, ", "")
+
+        # 수신거부 URL
         unsubscribe_url = f"{self.unsubscribe_base_url}?token={token}"
-        
-        # 본문 하단에 수신거부 링크 추가
-        personalized_body += f"\n\n---\n수신거부: {unsubscribe_url}"
-        
-        msg = MIMEText(personalized_body, "plain", "utf-8")
+
+        # 본문 줄바꿈을 HTML <br>로 변환
+        body_html = self.body.replace("\n", "<br>")
+
+        # HTML 템플릿에 값 삽입
+        html = self.template.format(
+            brand_name=self.brand_name,
+            greeting=greeting,
+            body=body_html,
+            cta_text=self.cta_text,
+            cta_url=self.cta_url,
+            unsubscribe_url=unsubscribe_url,
+            streak_count=0,
+            social_instagram=self.social_instagram,
+            social_twitter=self.social_twitter,
+            social_facebook=self.social_facebook,
+            social_tiktok=self.social_tiktok
+        )
+
+        msg = MIMEMultipart("related")
         msg["From"] = self.address
         msg["To"] = email
-        msg["Subject"] = self.subject
+        msg["Subject"] = subject
         msg["Date"] = formatdate(localtime=True)
         msg["Message-ID"] = make_msgid(domain=self.address.split("@")[1])
-        
-        # 수신거부 헤더 (웹 링크 + mailto 백업)
         msg["List-Unsubscribe"] = f"<{unsubscribe_url}>, <mailto:{self.address}?subject=unsubscribe>"
-        # List-Unsubscribe-Post는 GitHub Pages가 POST 못 받으므로 제거
-        
+
+        # HTML 본문 추가
+        msg.attach(MIMEText(html, "html", "utf-8"))
+
+        # 로고 이미지 첨부 (CID 방식)
+        if self.logo_data:
+            logo = MIMEImage(self.logo_data, _subtype="png")
+            logo.add_header("Content-ID", "<koko_logo>")
+            logo.add_header("Content-Disposition", "inline", filename="koko.png")
+            msg.attach(logo)
+
+        # 소셜 미디어 아이콘 첨부 (CID 방식)
+        for name, data in self.icons.items():
+            icon = MIMEImage(data, _subtype="png")
+            icon.add_header("Content-ID", f"<icon_{name}>")
+            icon.add_header("Content-Disposition", "inline", filename=f"icon_{name}.png")
+            msg.attach(icon)
+
         return msg
 
     def send_email(self, recipient):

@@ -2,6 +2,7 @@ import os
 import sys
 import secrets
 import re
+from datetime import datetime, timedelta, timezone
 from supabase import create_client
 
 # 이메일 형식 검증용 정규식
@@ -37,10 +38,17 @@ def get_recipients():
         sys.exit(1)
     
     try:
-        # email, name, unsubscribe_token 조회
+        # 24~48시간 전 범위 계산
+        now = datetime.now(timezone.utc)
+        time_48h_ago = (now - timedelta(hours=48)).isoformat()
+        time_24h_ago = (now - timedelta(hours=24)).isoformat()
+
+        # 가입 후 24~48시간 사이 유저만 조회
         response = client.table("users") \
-            .select("email, name, unsubscribe_token") \
+            .select("email, display_name, unsubscribe_token, created_at") \
             .eq("unsubscribed", False) \
+            .gte("created_at", time_48h_ago) \
+            .lte("created_at", time_24h_ago) \
             .execute()
     except Exception as e:
         print()
@@ -76,7 +84,7 @@ def get_recipients():
             continue
         seen_emails.add(email)
         
-        name = row.get("name")  # 이름 가져오기
+        name = row.get("display_name")  # 이름 가져오기
         token = row.get("unsubscribe_token")
         
         # 토큰이 없으면 생성
@@ -95,8 +103,9 @@ def get_recipients():
         
         recipients.append({
             "email": email,
-            "name": name,  # 이름 추가
-            "unsubscribe_token": token
+            "display_name": name,
+            "unsubscribe_token": token,
+            "created_at": row.get("created_at")
         })
 
     if not recipients:
