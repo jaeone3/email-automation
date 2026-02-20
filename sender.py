@@ -51,9 +51,14 @@ class EmailSender:
 
     def disconnect(self):
         if self.server:
-            self.server.quit()
-            self.server = None
-            self.logger.info("SMTP 연결 종료")
+            try:
+                self.server.quit()
+                self.logger.info("SMTP 연결 종료")
+            except Exception as e:
+                # 연결이 이미 끊긴 경우 등 예외 발생 시 무시
+                self.logger.warning(f"SMTP 종료 중 예외 발생 (무시됨): {e}")
+            finally:
+                self.server = None
 
     def __enter__(self):
         self.connect()
@@ -117,10 +122,15 @@ class EmailSender:
                 success += 1
             except smtplib.SMTPServerDisconnected:
                 self.logger.warning("연결이 끊어졌습니다. 재연결 시도 중...")
-                self.connect()
                 try:
+                    self.connect()
                     self.send_email(recipient)
                     success += 1
+                except smtplib.SMTPServerDisconnected as reconnect_error:
+                    # 재연결 실패 시 critical 로그 출력 후 break
+                    self.logger.critical(f"❌ 재연결 실패 - 전체 중단: {reconnect_error}")
+                    self.logger.critical("Gmail SMTP 서버에 연결할 수 없습니다. 네트워크 또는 서버 상태를 확인하세요.")
+                    break
                 except Exception as e:
                     self.logger.error(f"발송 실패 (재시도 후): {recipient['email']} - {e}")
                     failed_list.append({

@@ -143,8 +143,19 @@ def main():
     print("  상세 로그는 GitHub Actions 대시보드를 확인하세요.")
     print("=" * 50)
     
-    # 실패가 있으면 workflow failed
+    # 실패가 있거나 미처리분이 있으면 workflow failed
     if result['fail'] > 0:
+        sys.exit(1)
+    
+    # break로 인한 미처리분 감지 (Critical Error의 Silent Failure 방지)
+    if result['success'] + result['fail'] < result['total']:
+        unprocessed = result['total'] - (result['success'] + result['fail'])
+        print()
+        print("=" * 50)
+        print(f"  ❌ 경고: {unprocessed}명의 수신자가 처리되지 않았습니다.")
+        print("  원인: 인증 실패, 발신자 거부, Gmail 한도 초과 등")
+        print("  → GitHub Actions 로그에서 'critical' 메시지를 확인하세요.")
+        print("=" * 50)
         sys.exit(1)
 
 
