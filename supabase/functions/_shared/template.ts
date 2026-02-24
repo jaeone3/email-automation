@@ -1,4 +1,20 @@
-<!DOCTYPE html>
+interface TemplateParams {
+  brand_name: string;
+  greeting: string;
+  body: string;
+  cta_text: string;
+  cta_url: string;
+  streak_count: number;
+  unsubscribe_url: string;
+  unsubscribe_notice: string;
+  unsubscribe_text: string;
+  social_instagram: string;
+  social_twitter: string;
+  social_facebook: string;
+  social_tiktok: string;
+}
+
+const TEMPLATE = `<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -16,15 +32,15 @@
   <!-- 브랜드명 -->
   <tr>
     <td style="padding:40px 40px 24px 40px; text-align:center;">
-      <span style="font-size:21px; font-weight:700; color:#4b4b4b; letter-spacing:0.5px;">{brand_name}</span>
+      <span style="font-size:21px; font-weight:700; color:#4b4b4b; letter-spacing:0.5px;">{{brand_name}}</span>
     </td>
   </tr>
 
   <!-- CTA 버튼 -->
   <tr>
     <td style="padding:0 90px 56px 90px; text-align:center;">
-      <a href="{cta_url}" style="display:block; background-color:#58CC02; color:#ffffff; font-size:16px; font-weight:700; padding:15px 0; border-radius:14px; text-decoration:none; text-align:center;">
-        {cta_text}
+      <a href="{{cta_url}}" style="display:block; background-color:#58CC02; color:#ffffff; font-size:16px; font-weight:700; padding:15px 0; border-radius:14px; text-decoration:none; text-align:center;">
+        {{cta_text}}
       </a>
     </td>
   </tr>
@@ -32,7 +48,7 @@
   <!-- 로고 이미지 -->
   <tr>
     <td style="text-align:center; padding:0 40px 24px 40px;">
-      <img src="cid:koko_logo" alt="Koko AI" width="130" style="display:block; margin:0 auto;">
+      <img src="https://wotthxlghxmunmcdezcv.supabase.co/storage/v1/object/public/email-assets/koko_logo.png" alt="Koko AI" width="130" style="display:block; margin:0 auto;">
     </td>
   </tr>
 
@@ -40,7 +56,7 @@
   <tr>
     <td style="padding:0 40px 8px 40px; text-align:center;">
       <p style="font-size:23px; font-weight:800; color:#3c3c3c; margin:0; line-height:1.4;">
-        {greeting}
+        {{greeting}}
       </p>
     </td>
   </tr>
@@ -49,7 +65,7 @@
   <tr>
     <td style="padding:2px 40px 0 40px; text-align:center;">
       <p style="font-size:14px; font-weight:400; color:#afafaf; margin:0; line-height:1.6;">
-        {body}
+        {{body}}
       </p>
     </td>
   </tr>
@@ -67,7 +83,7 @@
       <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#FF9600; border-radius:16px;">
         <tr>
           <td style="padding:22px 28px; vertical-align:middle;">
-            <span style="font-size:15px; font-weight:800; color:#ffffff;">현재 연속 학습 일수: {streak_count}일</span>
+            <span style="font-size:15px; font-weight:800; color:#ffffff;">현재 연속 학습 일수: {{streak_count}}일</span>
           </td>
           <td width="56" style="padding:22px 28px 22px 0; text-align:right; vertical-align:middle;">
             <span style="font-size:30px;">&#128293;</span>
@@ -106,17 +122,17 @@
   <!-- 소셜 미디어 아이콘 -->
   <tr>
     <td style="padding:8px 40px 16px 40px; text-align:center;">
-      <a href="{social_instagram}" style="text-decoration:none; margin:0 7px; display:inline-block; vertical-align:middle;">
-        <img src="cid:icon_instagram" alt="Instagram" width="22" height="22" style="display:block;">
+      <a href="{{social_instagram}}" style="text-decoration:none; margin:0 7px; display:inline-block; vertical-align:middle;">
+        <img src="https://wotthxlghxmunmcdezcv.supabase.co/storage/v1/object/public/email-assets/icon_instagram.png" alt="Instagram" width="22" height="22" style="display:block;">
       </a>
-      <a href="{social_twitter}" style="text-decoration:none; margin:0 7px; display:inline-block; vertical-align:middle;">
-        <img src="cid:icon_x" alt="X" width="22" height="22" style="display:block;">
+      <a href="{{social_twitter}}" style="text-decoration:none; margin:0 7px; display:inline-block; vertical-align:middle;">
+        <img src="https://wotthxlghxmunmcdezcv.supabase.co/storage/v1/object/public/email-assets/icon_x.png" alt="X" width="22" height="22" style="display:block;">
       </a>
-      <a href="{social_facebook}" style="text-decoration:none; margin:0 7px; display:inline-block; vertical-align:middle;">
-        <img src="cid:icon_facebook" alt="Facebook" width="22" height="22" style="display:block;">
+      <a href="{{social_facebook}}" style="text-decoration:none; margin:0 7px; display:inline-block; vertical-align:middle;">
+        <img src="https://wotthxlghxmunmcdezcv.supabase.co/storage/v1/object/public/email-assets/icon_facebook.png" alt="Facebook" width="22" height="22" style="display:block;">
       </a>
-      <a href="{social_tiktok}" style="text-decoration:none; margin:0 7px; display:inline-block; vertical-align:middle;">
-        <img src="cid:icon_tiktok" alt="TikTok" width="22" height="22" style="display:block;">
+      <a href="{{social_tiktok}}" style="text-decoration:none; margin:0 7px; display:inline-block; vertical-align:middle;">
+        <img src="https://wotthxlghxmunmcdezcv.supabase.co/storage/v1/object/public/email-assets/icon_tiktok.png" alt="TikTok" width="22" height="22" style="display:block;">
       </a>
     </td>
   </tr>
@@ -125,10 +141,10 @@
   <tr>
     <td style="padding:8px 40px 40px 40px; text-align:center;">
       <p style="font-size:11px; font-weight:400; color:#afafaf; margin:0 0 6px 0; line-height:1.7;">
-        본 메일은 회원님이 {brand_name} 알림 메일 수신에 동의하였기에 발송된 메일입니다.
+        {{unsubscribe_notice}}
       </p>
-      <a href="{unsubscribe_url}" style="font-size:11px; font-weight:400; color:#afafaf; text-decoration:underline;">
-        수신거부
+      <a href="{{unsubscribe_url}}" style="font-size:11px; font-weight:400; color:#afafaf; text-decoration:underline;">
+        {{unsubscribe_text}}
       </a>
     </td>
   </tr>
@@ -141,4 +157,22 @@
 </table>
 
 </body>
-</html>
+</html>`;
+
+export function renderTemplate(params: TemplateParams): string {
+  let html = TEMPLATE;
+  html = html.replaceAll("{{brand_name}}", params.brand_name);
+  html = html.replaceAll("{{greeting}}", params.greeting);
+  html = html.replaceAll("{{body}}", params.body);
+  html = html.replaceAll("{{cta_text}}", params.cta_text);
+  html = html.replaceAll("{{cta_url}}", params.cta_url);
+  html = html.replaceAll("{{streak_count}}", String(params.streak_count));
+  html = html.replaceAll("{{unsubscribe_url}}", params.unsubscribe_url);
+  html = html.replaceAll("{{unsubscribe_notice}}", params.unsubscribe_notice);
+  html = html.replaceAll("{{unsubscribe_text}}", params.unsubscribe_text);
+  html = html.replaceAll("{{social_instagram}}", params.social_instagram);
+  html = html.replaceAll("{{social_twitter}}", params.social_twitter);
+  html = html.replaceAll("{{social_facebook}}", params.social_facebook);
+  html = html.replaceAll("{{social_tiktok}}", params.social_tiktok);
+  return html;
+}
