@@ -1,4 +1,4 @@
-import { DEFAULT_LANGUAGE } from "./config.ts";
+import { DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES } from "./config.ts";
 
 /**
  * IANA timezone → language name (config.ts의 EMAIL_CONTENT 키와 일치)
@@ -347,4 +347,22 @@ export function getLanguageFromTimezone(timezone: string | null): string {
     return DEFAULT_LANGUAGE;
   }
   return TIMEZONE_TO_LANGUAGE[timezone] || DEFAULT_LANGUAGE;
+}
+
+/**
+ * 지원 언어(7개: English, Korean, Japanese, Chinese, Spanish, German, French) 여부.
+ * false면 해당 유저는 발송 대상에서 제외한다.
+ */
+export function isSupportedLanguage(language: string): boolean {
+  return (SUPPORTED_LANGUAGES as readonly string[]).includes(language);
+}
+
+/**
+ * timezone을 "지원되는" 언어로 바로 변환. 매핑이 지원 언어가 아니면 null.
+ */
+export function getSupportedLanguageFromTimezone(
+  timezone: string | null,
+): string | null {
+  const lang = getLanguageFromTimezone(timezone);
+  return isSupportedLanguage(lang) ? lang : null;
 }

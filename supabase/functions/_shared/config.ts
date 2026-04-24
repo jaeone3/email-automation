@@ -1,617 +1,340 @@
-// 언어별 이메일 콘텐츠 타입
-export interface EmailContent {
-  subject: string;
-  body: string;
-  cta_text: string;
-  greeting: string;
-  unsubscribe_notice: string;
-  unsubscribe_text: string;
+// ============================================================
+// Retention email config
+// 7 languages × 4 days (D+1 / D+3 / D+7 / D+14) = 28 template sets
+// Duolingo-style: Koko as emotional mascot.
+// ============================================================
+
+export type RetentionDay = 1 | 3 | 7 | 14;
+export const RETENTION_DAYS: readonly RetentionDay[] = [1, 3, 7, 14] as const;
+
+export const SUPPORTED_LANGUAGES = [
+  "English",
+  "Korean",
+  "Japanese",
+  "Chinese",
+  "Spanish",
+  "German",
+  "French",
+] as const;
+export type SupportedLanguage = typeof SUPPORTED_LANGUAGES[number];
+
+export const DEFAULT_LANGUAGE: SupportedLanguage = "English";
+
+// Day-specific content. {name} is replaced with display_name (dropped if missing).
+export interface DayContent {
+  subject:         string;
+  body:            string;
+  greeting:        string;
+  cta_text:        string;
+  hero_image_url?: string; // per-day Koko reaction. undefined → DEFAULT_HERO_IMAGE 사용
 }
 
-// 공통 설정 (언어 무관)
+// Shared across days within the same language.
+export interface LanguagePack {
+  unsubscribe_notice: string; // {{brand_name}} placeholder
+  unsubscribe_text:   string;
+  day_1:  DayContent;
+  day_3:  DayContent;
+  day_7:  DayContent;
+  day_14: DayContent;
+}
+
+// ------------------------------------------------------------
+// Brand-wide config (language-agnostic)
+// ------------------------------------------------------------
 export const COMMON_CONFIG = {
   brand_name: "Koko AI",
-  cta_url: "https://kokoai.com/app",
+  // OneLink (AppsFlyer) 스마트 링크: 앱 있으면 앱 열기, 없으면 스토어로 폴백
+  cta_url: "https://onelink.to/cxgatm",
   streak_count: 0,
+  // 우리 Supabase Edge Function이 수신거부를 처리.
   unsubscribe_base_url:
-    "https://jaeone3.github.io/email-unsubscribe/unsubscribe.html",
-  social_instagram: "#",
-  social_twitter: "#",
-  social_facebook: "#",
-  social_tiktok: "#",
+    "https://evljahialeytwjpnjywm.supabase.co/functions/v1/unsubscribe",
+  // 활성 소셜 계정만 유지
+  social_instagram: "https://www.instagram.com/koko_contents/",
+  social_tiktok: "https://www.tiktok.com/@koko_ai_official",
+  social_youtube: "https://www.youtube.com/@Kcontents-everyday/",
+  // 문의 / 회신 주소
+  support_email: "jake@kokoai.im",
+  reply_to_email: "jake@kokoai.im",
+  // 사회적 증거 (언어 무관 유니버설 포맷)
+  social_proof: "25,000+ learners · ⭐ 4.8",
 };
 
-// 발송 설정
+// 법적 필수 정보 (CAN-SPAM / 정보통신망법)
+export const BUSINESS_INFO = {
+  company: "Koko",              // 상호
+  ceo: "Jake",                  // 대표자
+  business_number: "4645500789", // 사업자등록번호
+  address: "서울 구로구 디지털로32길 30 코오롱디지털타워빌란트 706호",
+};
+
+// day별 image_url이 undefined면 이 값으로 폴백. (브랜드 로고)
+export const DEFAULT_HERO_IMAGE =
+  "https://evljahialeytwjpnjywm.supabase.co/storage/v1/object/public/email-assets/appicon.png";
+
 export const SEND_CONFIG = {
   BATCH_SIZE: 20,
-  STALE_LOCK_MINUTES: 5,
-  MAX_ATTEMPTS: 3,
 };
 
-// 기본 언어 (타임존 매핑 실패 시)
-export const DEFAULT_LANGUAGE = "English";
-
-// 72개 언어별 이메일 콘텐츠
-export const EMAIL_CONTENT: Record<string, EmailContent> = {
-  "English": {
-    subject: "{name}, we haven't seen you in a few days, but Koko believes in you!",
-    body: "Even one lesson can teach you so much.",
-    cta_text: "Start now",
-    greeting: "Learn Korean today!",
-    unsubscribe_notice: "This email was sent because you agreed to receive notification emails from {{brand_name}}.",
+// ------------------------------------------------------------
+// 7-language × 4-day Duolingo-style template pack
+// 톤 곡선: D+1 애교 🥺 → D+3 걱정 😟 → D+7 슬픔 💔 → D+14 체념 😬
+// ------------------------------------------------------------
+export const EMAIL_CONTENT: Record<SupportedLanguage, LanguagePack> = {
+  English: {
+    unsubscribe_notice:
+      "This email was sent because you agreed to receive notification emails from {{brand_name}}.",
     unsubscribe_text: "Unsubscribe",
+    day_1: {
+      subject:  "{name}, Koko is waiting for you 🥺",
+      greeting: "Just 5 minutes. That's it.",
+      body:     "One lesson and Koko's smile is back. Don't let your streak slip!",
+      cta_text: "Practice now",
+    },
+    day_3: {
+      subject:  "{name}, Koko is getting worried 😟",
+      greeting: "3 days without Korean.",
+      body:     "Your brain is already forgetting words. 5 minutes fixes it.",
+      cta_text: "I'm back!",
+    },
+    day_7: {
+      subject:  "{name}, a whole week without Korean 💔",
+      greeting: "Koko misses you so much.",
+      body:     "A week can turn into a month. Let's not let that happen. One lesson today.",
+      cta_text: "Save my streak",
+    },
+    day_14: {
+      subject:  "{name}, these reminders don't seem to work... 😬",
+      greeting: "Maybe we should stop sending these?",
+      body:     "Two weeks. If you're still with us, come back — Koko has been waiting.",
+      cta_text: "I'm still here",
+    },
   },
-  "Korean": {
-    subject: "{name}님, 며칠 못 봤지만 Koko는 회원님을 믿어요!",
-    body: "레슨 하나만으로도 많이 배울 수 있어요.",
-    cta_text: "지금 시작하기",
-    greeting: "오늘 한국어를 배워보세요!",
-    unsubscribe_notice: "본 메일은 회원님이 {{brand_name}} 알림 메일 수신에 동의하였기에 발송된 메일입니다.",
+
+  Korean: {
+    unsubscribe_notice:
+      "본 메일은 회원님이 {{brand_name}} 알림 메일 수신에 동의하였기에 발송된 메일입니다.",
     unsubscribe_text: "수신거부",
+    day_1: {
+      subject:  "{name}님, Koko가 기다리고 있어요 🥺",
+      greeting: "딱 5분만!",
+      body:     "레슨 하나면 Koko가 다시 웃어요. 스트릭 지켜봐요!",
+      cta_text: "지금 시작",
+    },
+    day_3: {
+      subject:  "{name}님, Koko가 걱정 중이에요 😟",
+      greeting: "3일이나 쉬셨네요.",
+      body:     "뇌가 벌써 단어를 까먹고 있어요. 5분이면 복구돼요.",
+      cta_text: "돌아왔어요",
+    },
+    day_7: {
+      subject:  "{name}님, 일주일이나 못 봤어요 💔",
+      greeting: "Koko가 너무 보고 싶대요.",
+      body:     "일주일이 한 달이 될 수도 있어요. 오늘 레슨 하나만요.",
+      cta_text: "스트릭 살리기",
+    },
+    day_14: {
+      subject:  "{name}님, 이 알림, 효과가 없나봐요... 😬",
+      greeting: "이제 메일 그만 보낼까요?",
+      body:     "2주가 지났어요. 아직 여기 있다면, 돌아와요. Koko가 계속 기다려요.",
+      cta_text: "아직 있어요",
+    },
   },
-  "Japanese": {
-    subject: "{name}さん、数日会えてないけど、Kokoは君を信じてるよ！",
-    body: "レッスン1つだけでも、たくさん学べるよ。",
-    cta_text: "今すぐ始める",
-    greeting: "今日韓国語を学ぼう！",
-    unsubscribe_notice: "本メールは、{{brand_name}}からの通知メール受信にご同意いただいたため送信されています。",
+
+  Japanese: {
+    unsubscribe_notice:
+      "本メールは、{{brand_name}}からの通知メール受信にご同意いただいたため送信されています。",
     unsubscribe_text: "配信停止",
+    day_1: {
+      subject:  "{name}さん、Kokoが待ってるよ 🥺",
+      greeting: "たった5分でOK!",
+      body:     "レッスン1つでKokoの笑顔が戻るよ。連続記録、守ろう!",
+      cta_text: "今すぐ始める",
+    },
+    day_3: {
+      subject:  "{name}さん、Kokoが心配してるよ 😟",
+      greeting: "3日も休んだね。",
+      body:     "脳はもう単語を忘れかけてる。5分で取り戻せるよ。",
+      cta_text: "戻ってきたよ",
+    },
+    day_7: {
+      subject:  "{name}さん、1週間も会えてないよ 💔",
+      greeting: "Kokoがすごく寂しがってる。",
+      body:     "1週間が1ヶ月になっちゃうかも。今日、レッスン1つだけ。",
+      cta_text: "連続記録を救う",
+    },
+    day_14: {
+      subject:  "{name}さん、このリマインダー、効いてないみたい... 😬",
+      greeting: "もうメール、やめた方がいい?",
+      body:     "2週間経ったよ。まだいるなら、戻ってきて。Kokoはずっと待ってる。",
+      cta_text: "まだここにいるよ",
+    },
   },
-  "Chinese": {
-    subject: "{name}，好几天没见了，但Koko相信你！",
-    body: "哪怕只上一节课，也能学到很多。",
-    cta_text: "立即开始",
-    greeting: "今天来学韩语吧！",
-    unsubscribe_notice: "本邮件是因为您同意接收{{brand_name}}的通知邮件而发送的。",
-    unsubscribe_text: "退订",
+
+  Chinese: {
+    unsubscribe_notice:
+      "本邮件是因为您同意接收来自 {{brand_name}} 的通知邮件而发送的。",
+    unsubscribe_text: "取消订阅",
+    day_1: {
+      subject:  "{name},Koko在等你 🥺",
+      greeting: "只要5分钟!",
+      body:     "一节课,Koko就又笑了。别断掉连续记录!",
+      cta_text: "立刻开始",
+    },
+    day_3: {
+      subject:  "{name},Koko开始担心了 😟",
+      greeting: "3天没学韩语了。",
+      body:     "大脑已经在忘记单词。5分钟就能救回来。",
+      cta_text: "我回来啦",
+    },
+    day_7: {
+      subject:  "{name},整整一周没见 💔",
+      greeting: "Koko特别想你。",
+      body:     "一周可能变成一个月。今天一节课就够。",
+      cta_text: "守住连续记录",
+    },
+    day_14: {
+      subject:  "{name},这些提醒好像没用啊... 😬",
+      greeting: "要不就别发邮件了?",
+      body:     "两周了。如果你还在,回来吧。Koko一直在等。",
+      cta_text: "我还在",
+    },
   },
-  "Spanish": {
-    subject: "{name}, hace unos días que no te vemos, ¡pero Koko cree en ti!",
-    body: "Con solo una lección puedes aprender mucho.",
-    cta_text: "Empieza ahora",
-    greeting: "¡Aprende coreano hoy!",
-    unsubscribe_notice: "Este correo se envía porque aceptaste recibir notificaciones de {{brand_name}}.",
+
+  Spanish: {
+    unsubscribe_notice:
+      "Recibiste este correo porque aceptaste recibir notificaciones de {{brand_name}}.",
     unsubscribe_text: "Cancelar suscripción",
+    day_1: {
+      subject:  "{name}, Koko te está esperando 🥺",
+      greeting: "Solo 5 minutos.",
+      body:     "Una lección y Koko sonríe de nuevo. ¡No rompas la racha!",
+      cta_text: "Practicar ahora",
+    },
+    day_3: {
+      subject:  "{name}, Koko está preocupado 😟",
+      greeting: "3 días sin coreano.",
+      body:     "Tu cerebro ya está olvidando palabras. 5 minutos lo arreglan.",
+      cta_text: "¡Volví!",
+    },
+    day_7: {
+      subject:  "{name}, toda una semana 💔",
+      greeting: "Koko te extraña muchísimo.",
+      body:     "Una semana puede volverse un mes. No dejemos que pase. Una lección hoy.",
+      cta_text: "Salvar la racha",
+    },
+    day_14: {
+      subject:  "{name}, estos recordatorios no funcionan... 😬",
+      greeting: "¿Dejamos de enviar emails?",
+      body:     "Dos semanas. Si sigues ahí, vuelve. Koko sigue esperando.",
+      cta_text: "Sigo aquí",
+    },
   },
-  "French": {
-    subject: "{name}, ça fait quelques jours qu'on ne s'est pas vu, mais Koko croit en toi !",
-    body: "Une seule leçon peut t'apprendre beaucoup.",
-    cta_text: "Commence maintenant",
-    greeting: "Apprends le coréen aujourd'hui !",
-    unsubscribe_notice: "Cet email t'a été envoyé car tu as accepté de recevoir les notifications de {{brand_name}}.",
+
+  German: {
+    unsubscribe_notice:
+      "Diese E-Mail wurde gesendet, weil du dem Erhalt von Benachrichtigungen von {{brand_name}} zugestimmt hast.",
+    unsubscribe_text: "Abmelden",
+    day_1: {
+      subject:  "{name}, Koko wartet auf dich 🥺",
+      greeting: "Nur 5 Minuten!",
+      body:     "Eine Lektion und Koko lächelt wieder. Lass die Serie nicht reißen!",
+      cta_text: "Jetzt üben",
+    },
+    day_3: {
+      subject:  "{name}, Koko macht sich Sorgen 😟",
+      greeting: "3 Tage ohne Koreanisch.",
+      body:     "Dein Gehirn vergisst schon Wörter. 5 Minuten reichen, um sie zurückzuholen.",
+      cta_text: "Bin zurück!",
+    },
+    day_7: {
+      subject:  "{name}, eine ganze Woche 💔",
+      greeting: "Koko vermisst dich sehr.",
+      body:     "Eine Woche kann zu einem Monat werden. Lass uns das verhindern. Eine Lektion heute.",
+      cta_text: "Serie retten",
+    },
+    day_14: {
+      subject:  "{name}, diese Erinnerungen scheinen nicht zu wirken... 😬",
+      greeting: "Sollen wir aufhören, E-Mails zu senden?",
+      body:     "Zwei Wochen. Wenn du noch da bist, komm zurück. Koko wartet immer noch.",
+      cta_text: "Ich bin noch hier",
+    },
+  },
+
+  French: {
+    unsubscribe_notice:
+      "Vous recevez cet email car vous avez accepté de recevoir des notifications de {{brand_name}}.",
     unsubscribe_text: "Se désabonner",
-  },
-  "Portuguese": {
-    subject: "{name}, faz alguns dias que não nos vemos, mas Koko acredita em você!",
-    body: "Apenas uma lição já pode ensinar muito.",
-    cta_text: "Começar agora",
-    greeting: "Aprenda coreano hoje!",
-    unsubscribe_notice: "Este email foi enviado porque você concordou em receber notificações de {{brand_name}}.",
-    unsubscribe_text: "Cancelar inscrição",
-  },
-  "German": {
-    subject: "{name}, wir haben dich ein paar Tage nicht gesehen, aber Koko glaubt an dich!",
-    body: "Schon eine einzige Lektion kann dir viel beibringen.",
-    cta_text: "Jetzt starten",
-    greeting: "Lerne heute Koreanisch!",
-    unsubscribe_notice: "Diese E-Mail wurde gesendet, weil du dem Erhalt von Benachrichtigungen von {{brand_name}} zugestimmt hast.",
-    unsubscribe_text: "Abbestellen",
-  },
-  "Russian": {
-    subject: "{name}, мы не виделись несколько дней, но Koko верит в тебя!",
-    body: "Даже один урок может многому научить.",
-    cta_text: "Начать сейчас",
-    greeting: "Учи корейский сегодня!",
-    unsubscribe_notice: "Это письмо отправлено, потому что ты согласился получать уведомления от {{brand_name}}.",
-    unsubscribe_text: "Отписаться",
-  },
-  "Arabic": {
-    subject: "{name}، لم نلتقِ منذ بضعة أيام، لكن Koko يؤمن بك!",
-    body: "حتى درس واحد يمكن أن يعلّمك الكثير.",
-    cta_text: "ابدأ الآن",
-    greeting: "تعلّم الكورية اليوم!",
-    unsubscribe_notice: "تم إرسال هذا البريد الإلكتروني لأنك وافقت على تلقّي إشعارات من {{brand_name}}.",
-    unsubscribe_text: "إلغاء الاشتراك",
-  },
-  "Thai": {
-    subject: "{name} ไม่ได้เจอกันหลายวัน แต่ Koko เชื่อมั่นในคุณ!",
-    body: "แค่บทเรียนเดียวก็เรียนรู้ได้เยอะแล้ว",
-    cta_text: "เริ่มเลย",
-    greeting: "เรียนภาษาเกาหลีวันนี้!",
-    unsubscribe_notice: "อีเมลนี้ส่งถึงคุณเนื่องจากคุณยินยอมรับอีเมลแจ้งเตือนจาก {{brand_name}}.",
-    unsubscribe_text: "ยกเลิกการรับข่าวสาร",
-  },
-  "Vietnamese": {
-    subject: "{name}, mấy ngày không gặp nhưng Koko vẫn tin bạn!",
-    body: "Chỉ một bài học thôi cũng học được rất nhiều.",
-    cta_text: "Bắt đầu ngay",
-    greeting: "Học tiếng Hàn hôm nay!",
-    unsubscribe_notice: "Email này được gửi vì bạn đã đồng ý nhận thông báo từ {{brand_name}}.",
-    unsubscribe_text: "Hủy đăng ký",
-  },
-  "Indonesian": {
-    subject: "{name}, sudah beberapa hari tidak bertemu, tapi Koko percaya padamu!",
-    body: "Satu pelajaran saja bisa mengajarkanmu banyak hal.",
-    cta_text: "Mulai sekarang",
-    greeting: "Belajar bahasa Korea hari ini!",
-    unsubscribe_notice: "Email ini dikirim karena kamu telah setuju menerima notifikasi dari {{brand_name}}.",
-    unsubscribe_text: "Berhenti berlangganan",
-  },
-  "Turkish": {
-    subject: "{name}, birkaç gündür görüşemedik ama Koko sana inanıyor!",
-    body: "Tek bir ders bile çok şey öğretebilir.",
-    cta_text: "Şimdi başla",
-    greeting: "Bugün Korece öğren!",
-    unsubscribe_notice: "Bu e-posta, {{brand_name}} bildirim e-postalarını almayı kabul ettiğin için gönderilmiştir.",
-    unsubscribe_text: "Abonelikten çık",
-  },
-  "Polish": {
-    subject: "{name}, nie widzieliśmy się kilka dni, ale Koko w Ciebie wierzy!",
-    body: "Nawet jedna lekcja może Cię wiele nauczyć.",
-    cta_text: "Zacznij teraz",
-    greeting: "Ucz się koreańskiego już dziś!",
-    unsubscribe_notice: "Ten email został wysłany, ponieważ wyraziłeś zgodę na otrzymywanie powiadomień od {{brand_name}}.",
-    unsubscribe_text: "Wypisz się",
-  },
-  "Dutch": {
-    subject: "{name}, we hebben je een paar dagen niet gezien, maar Koko gelooft in je!",
-    body: "Zelfs één les kan je al veel leren.",
-    cta_text: "Nu beginnen",
-    greeting: "Leer vandaag Koreaans!",
-    unsubscribe_notice: "Deze e-mail is verzonden omdat je hebt ingestemd met het ontvangen van meldingen van {{brand_name}}.",
-    unsubscribe_text: "Uitschrijven",
-  },
-  "Italian": {
-    subject: "{name}, non ci vediamo da qualche giorno, ma Koko crede in te!",
-    body: "Anche una sola lezione può insegnarti tanto.",
-    cta_text: "Inizia ora",
-    greeting: "Impara il coreano oggi!",
-    unsubscribe_notice: "Questa email è stata inviata perché hai acconsentito a ricevere notifiche da {{brand_name}}.",
-    unsubscribe_text: "Annulla iscrizione",
-  },
-  "Hindi": {
-    subject: "{name}, कुछ दिनों से नहीं मिले, लेकिन Koko को आप पर भरोसा है!",
-    body: "एक लेसन से भी बहुत कुछ सीख सकते हैं।",
-    cta_text: "अभी शुरू करें",
-    greeting: "आज कोरियन सीखें!",
-    unsubscribe_notice: "यह ईमेल आपको इसलिए भेजी गई है क्योंकि आपने {{brand_name}} से सूचना ईमेल प्राप्त करने की सहमति दी है।",
-    unsubscribe_text: "सदस्यता रद्द करें",
-  },
-  "Bengali": {
-    subject: "{name}, কয়েকদিন দেখা হয়নি, কিন্তু Koko তোমাকে বিশ্বাস করে!",
-    body: "একটি লেসনেও অনেক কিছু শেখা যায়।",
-    cta_text: "এখনই শুরু করুন",
-    greeting: "আজ কোরিয়ান শিখুন!",
-    unsubscribe_notice: "এই ইমেইলটি পাঠানো হয়েছে কারণ আপনি {{brand_name}} থেকে বিজ্ঞপ্তি ইমেইল পেতে সম্মত হয়েছিলেন।",
-    unsubscribe_text: "সদস্যতা বাতিল",
-  },
-  "Malay": {
-    subject: "{name}, sudah beberapa hari tak jumpa, tapi Koko percaya pada awak!",
-    body: "Satu pelajaran sahaja boleh mengajar banyak.",
-    cta_text: "Mula sekarang",
-    greeting: "Jom belajar bahasa Korea hari ini!",
-    unsubscribe_notice: "Emel ini dihantar kerana anda bersetuju menerima emel pemberitahuan daripada {{brand_name}}.",
-    unsubscribe_text: "Nyahlanggan",
-  },
-  "Filipino": {
-    subject: "{name}, ilang araw na tayong hindi nagkita, pero naniniwala ang Koko sa'yo!",
-    body: "Isang lesson lang, marami ka nang matutunan.",
-    cta_text: "Magsimula na",
-    greeting: "Matuto ng Korean ngayon!",
-    unsubscribe_notice: "Ipinadala ang email na ito dahil pumayag kang makatanggap ng mga notification mula sa {{brand_name}}.",
-    unsubscribe_text: "Mag-unsubscribe",
-  },
-  "Ukrainian": {
-    subject: "{name}, кілька днів не бачились, але Koko вірить у тебе!",
-    body: "Навіть один урок може багато чому навчити.",
-    cta_text: "Почати зараз",
-    greeting: "Вивчай корейську сьогодні!",
-    unsubscribe_notice: "Цей лист надіслано, бо ти погодився отримувати сповіщення від {{brand_name}}.",
-    unsubscribe_text: "Відписатися",
-  },
-  "Romanian": {
-    subject: "{name}, nu ne-am văzut de câteva zile, dar Koko crede în tine!",
-    body: "Chiar și o singură lecție te poate învăța multe.",
-    cta_text: "Începe acum",
-    greeting: "Învață coreeană astăzi!",
-    unsubscribe_notice: "Acest email a fost trimis deoarece ai acceptat să primești notificări de la {{brand_name}}.",
-    unsubscribe_text: "Dezabonare",
-  },
-  "Czech": {
-    subject: "{name}, pár dní jsme se neviděli, ale Koko ti věří!",
-    body: "I jedna lekce tě může hodně naučit.",
-    cta_text: "Začít hned",
-    greeting: "Uč se korejsky ještě dnes!",
-    unsubscribe_notice: "Tento e-mail byl odeslán, protože jsi souhlasil se zasíláním oznámení od {{brand_name}}.",
-    unsubscribe_text: "Odhlásit se",
-  },
-  "Greek": {
-    subject: "{name}, δεν σε είδαμε μερικές μέρες, αλλά το Koko πιστεύει σε σένα!",
-    body: "Ακόμα κι ένα μάθημα μπορεί να σε διδάξει πολλά.",
-    cta_text: "Ξεκίνα τώρα",
-    greeting: "Μάθε κορεατικά σήμερα!",
-    unsubscribe_notice: "Αυτό το email στάλθηκε επειδή συμφώνησες να λαμβάνεις ειδοποιήσεις από το {{brand_name}}.",
-    unsubscribe_text: "Απεγγραφή",
-  },
-  "Hungarian": {
-    subject: "{name}, pár napja nem találkoztunk, de a Koko hisz benned!",
-    body: "Egyetlen lecke is sokat taníthat.",
-    cta_text: "Kezdd el most",
-    greeting: "Tanulj koreaiül ma!",
-    unsubscribe_notice: "Ezt az e-mailt azért kaptad, mert hozzájárultál a {{brand_name}} értesítéseinek fogadásához.",
-    unsubscribe_text: "Leiratkozás",
-  },
-  "Swedish": {
-    subject: "{name}, vi har inte setts på några dagar, men Koko tror på dig!",
-    body: "Redan en enda lektion kan lära dig mycket.",
-    cta_text: "Börja nu",
-    greeting: "Lär dig koreanska idag!",
-    unsubscribe_notice: "Det här mejlet skickades eftersom du godkände att ta emot aviseringar från {{brand_name}}.",
-    unsubscribe_text: "Avregistrera",
-  },
-  "Danish": {
-    subject: "{name}, vi har ikke set dig i et par dage, men Koko tror på dig!",
-    body: "Bare én lektion kan lære dig meget.",
-    cta_text: "Start nu",
-    greeting: "Lær koreansk i dag!",
-    unsubscribe_notice: "Denne e-mail blev sendt, fordi du accepterede at modtage notifikationer fra {{brand_name}}.",
-    unsubscribe_text: "Afmeld",
-  },
-  "Norwegian": {
-    subject: "{name}, vi har ikke sett deg på noen dager, men Koko tror på deg!",
-    body: "Bare én leksjon kan lære deg mye.",
-    cta_text: "Start nå",
-    greeting: "Lær koreansk i dag!",
-    unsubscribe_notice: "Denne e-posten ble sendt fordi du godtok å motta varsler fra {{brand_name}}.",
-    unsubscribe_text: "Avslutt abonnement",
-  },
-  "Finnish": {
-    subject: "{name}, emme ole nähneet sinua muutamaan päivään, mutta Koko uskoo sinuun!",
-    body: "Yksikin oppitunti voi opettaa paljon.",
-    cta_text: "Aloita nyt",
-    greeting: "Opi koreaa tänään!",
-    unsubscribe_notice: "Tämä sähköposti lähetettiin, koska hyväksyit ilmoitusten vastaanottamisen {{brand_name}}-palvelulta.",
-    unsubscribe_text: "Peruuta tilaus",
-  },
-  "Bulgarian": {
-    subject: "{name}, не сме се виждали няколко дни, но Koko вярва в теб!",
-    body: "Дори един урок може да те научи на много.",
-    cta_text: "Започни сега",
-    greeting: "Учи корейски днес!",
-    unsubscribe_notice: "Този имейл е изпратен, защото се съгласи да получаваш известия от {{brand_name}}.",
-    unsubscribe_text: "Отписване",
-  },
-  "Serbian": {
-    subject: "{name}, нисмо се видели неколико дана, али Koko верује у тебе!",
-    body: "Чак и једна лекција може да те научи много.",
-    cta_text: "Почни сада",
-    greeting: "Учи корејски данас!",
-    unsubscribe_notice: "Овај имејл је послат јер си пристао да примаш обавештења од {{brand_name}}.",
-    unsubscribe_text: "Одјави се",
-  },
-  "Croatian": {
-    subject: "{name}, nismo se vidjeli nekoliko dana, ali Koko vjeruje u tebe!",
-    body: "Čak i jedna lekcija te može puno naučiti.",
-    cta_text: "Počni sad",
-    greeting: "Uči korejski danas!",
-    unsubscribe_notice: "Ova e-pošta poslana je jer si pristao primati obavijesti od {{brand_name}}.",
-    unsubscribe_text: "Odjavi se",
-  },
-  "Slovak": {
-    subject: "{name}, pár dní sme sa nevideli, ale Koko ti verí!",
-    body: "Aj jedna lekcia ťa môže veľa naučiť.",
-    cta_text: "Začať teraz",
-    greeting: "Učte sa kórejčinu dnes!",
-    unsubscribe_notice: "Tento e-mail bol odoslaný, pretože si súhlasil so zasielaním oznámení od {{brand_name}}.",
-    unsubscribe_text: "Odhlásiť sa",
-  },
-  "Slovenian": {
-    subject: "{name}, nekaj dni se nismo videli, a Koko verjame v tebe!",
-    body: "Že ena lekcija te lahko veliko nauči.",
-    cta_text: "Začni zdaj",
-    greeting: "Uči se korejščine danes!",
-    unsubscribe_notice: "To e-sporočilo je bilo poslano, ker si se strinjal s prejemanjem obvestil od {{brand_name}}.",
-    unsubscribe_text: "Odjavi se",
-  },
-  "Estonian": {
-    subject: "{name}, mõned päevad pole näinud, aga Koko usub sinusse!",
-    body: "Isegi üks tund võib sulle palju õpetada.",
-    cta_text: "Alusta kohe",
-    greeting: "Õpi korea keelt täna!",
-    unsubscribe_notice: "See e-kiri saadeti, sest nõustusid saama teateid {{brand_name}}-lt.",
-    unsubscribe_text: "Loobu tellimusest",
-  },
-  "Latvian": {
-    subject: "{name}, dažas dienas neesam redzējušies, bet Koko tic tev!",
-    body: "Pat viena nodarbība var daudz iemācīt.",
-    cta_text: "Sāc tagad",
-    greeting: "Mācies korejiešu valodu šodien!",
-    unsubscribe_notice: "Šis e-pasts tika nosūtīts, jo tu piekritsi saņemt paziņojumus no {{brand_name}}.",
-    unsubscribe_text: "Atteikt abonementu",
-  },
-  "Lithuanian": {
-    subject: "{name}, kelias dienas nesimačėme, bet Koko tiki tavimi!",
-    body: "Net viena pamoka gali daug išmokyti.",
-    cta_text: "Pradėti dabar",
-    greeting: "Mokykis korėjiečių kalbos šiandien!",
-    unsubscribe_notice: "Šis el. laiškas išsiųstas, nes sutikai gauti pranešimus iš {{brand_name}}.",
-    unsubscribe_text: "Atsisakyti prenumeratos",
-  },
-  "Albanian": {
-    subject: "{name}, ka disa ditë që nuk jemi parë, por Koko beson në ty!",
-    body: "Edhe vetëm një mësim mund të të mësojë shumë.",
-    cta_text: "Fillo tani",
-    greeting: "Mëso korejisht sot!",
-    unsubscribe_notice: "Ky email u dërgua sepse pranove të marrësh njoftime nga {{brand_name}}.",
-    unsubscribe_text: "Çregjistrohu",
-  },
-  "Macedonian": {
-    subject: "{name}, неколку дена не се видовме, но Koko верува во тебе!",
-    body: "Дури и една лекција може многу да те научи.",
-    cta_text: "Започни сега",
-    greeting: "Учи корејски денес!",
-    unsubscribe_notice: "Оваа е-пошта е испратена бидејќи се согласи да добиваш известувања од {{brand_name}}.",
-    unsubscribe_text: "Одјави се",
-  },
-  "Bosnian": {
-    subject: "{name}, nismo se vidjeli nekoliko dana, ali Koko vjeruje u tebe!",
-    body: "Čak i jedna lekcija te može mnogo naučiti.",
-    cta_text: "Počni sada",
-    greeting: "Uči korejski danas!",
-    unsubscribe_notice: "Ovaj email je poslan jer si pristao primati obavještenja od {{brand_name}}.",
-    unsubscribe_text: "Odjavi se",
-  },
-  "Maltese": {
-    subject: "{name}, ma rajniekx għal ftit jiem, imma Koko jemmen fik!",
-    body: "Anke lezzjoni waħda tista' tgħallmek ħafna.",
-    cta_text: "Ibda issa",
-    greeting: "Tgħallem il-Korean illum!",
-    unsubscribe_notice: "Din l-email intbagħtet għaliex aċċettajt li tirċievi notifiki mingħand {{brand_name}}.",
-    unsubscribe_text: "Tneħħi l-abbonament",
-  },
-  "Icelandic": {
-    subject: "{name}, við höfum ekki séð þig í nokkra daga, en Koko trúir á þig!",
-    body: "Jafnvel ein lexía getur kennt þér margt.",
-    cta_text: "Byrjaðu núna",
-    greeting: "Lærðu kóresku í dag!",
-    unsubscribe_notice: "Þessi tölvupóstur var sendur vegna þess að þú samþykktir að fá tilkynningar frá {{brand_name}}.",
-    unsubscribe_text: "Afskrá",
-  },
-  "Faroese": {
-    subject: "{name}, vit hava ikki sæð teg í nøkur dagar, men Koko trúgvar á teg!",
-    body: "Bara ein lektiónur kann læra tær nógv.",
-    cta_text: "Byrja nú",
-    greeting: "Lær koreanskt í dag!",
-    unsubscribe_notice: "Hetta teldupostið varð sent, tí tú góðtókti at fáa fráboðanir frá {{brand_name}}.",
-    unsubscribe_text: "Avbesta",
-  },
-  "Catalan": {
-    subject: "{name}, fa uns dies que no et veiem, però Koko creu en tu!",
-    body: "Fins i tot una sola lliçó et pot ensenyar molt.",
-    cta_text: "Comença ara",
-    greeting: "Aprèn coreà avui!",
-    unsubscribe_notice: "Aquest correu s'ha enviat perquè has acceptat rebre notificacions de {{brand_name}}.",
-    unsubscribe_text: "Cancel·lar la subscripció",
-  },
-  "Persian": {
-    subject: "{name}، چند روز است که ندیدیمتان، اما Koko به شما باور دارد!",
-    body: "حتی یک درس هم می‌تواند چیزهای زیادی به شما بیاموزد.",
-    cta_text: "همین الان شروع کنید",
-    greeting: "امروز کره‌ای یاد بگیرید!",
-    unsubscribe_notice: "این ایمیل ارسال شده چون شما با دریافت اعلان‌های {{brand_name}} موافقت کردید.",
-    unsubscribe_text: "لغو اشتراک",
-  },
-  "Hebrew": {
-    subject: "{name}, לא נפגשנו כמה ימים, אבל Koko סומך עליכם!",
-    body: "אפילו שיעור אחד יכול ללמד המון.",
-    cta_text: "להתחיל עכשיו",
-    greeting: "ללמוד קוריאנית היום!",
-    unsubscribe_notice: "אימייל זה נשלח כיוון שהסכמתם לקבל הודעות מ-{{brand_name}}.",
-    unsubscribe_text: "ביטול הרשמה",
-  },
-  "Urdu": {
-    subject: "{name}، کچھ دن نہیں ملے، لیکن Koko آپ پر یقین رکھتا ہے!",
-    body: "صرف ایک لیسن سے بھی بہت کچھ سیکھ سکتے ہیں۔",
-    cta_text: "ابھی شروع کریں",
-    greeting: "آج کوریائی سیکھیں!",
-    unsubscribe_notice: "یہ ای میل اس لیے بھیجی گئی ہے کیونکہ آپ نے {{brand_name}} سے اطلاعات وصول کرنے کی اجازت دی ہے۔",
-    unsubscribe_text: "ان سبسکرائب",
-  },
-  "Nepali": {
-    subject: "{name}, केही दिनदेखि भेट भएन, तर Koko तपाईंलाई विश्वास गर्छ!",
-    body: "एउटा लेसनले मात्र पनि धेरै सिकाउँछ।",
-    cta_text: "अहिले सुरु गर्नुहोस्",
-    greeting: "आज कोरियन सिक्नुहोस्!",
-    unsubscribe_notice: "यो इमेल {{brand_name}} बाट सूचना इमेल प्राप्त गर्न सहमति दिनुभएकोले पठाइएको हो।",
-    unsubscribe_text: "सदस्यता रद्द गर्नुहोस्",
-  },
-  "Sinhala": {
-    subject: "{name}, දින කිහිපයක් හමු නොවුණත් Koko ඔබව විශ්වාස කරනවා!",
-    body: "එක පාඩමකින් වත් ගොඩක් ඉගෙන ගන්න පුළුවන්.",
-    cta_text: "දැන් ආරම්භ කරන්න",
-    greeting: "අද කොරියානු ඉගෙන ගන්න!",
-    unsubscribe_notice: "{{brand_name}} දැනුම්දීම් ඊමේල් ලබාගැනීමට ඔබ එකඟ වූ බැවින් මෙම ඊමේල් එවන ලදී.",
-    unsubscribe_text: "දායකත්වය අවලංගු කරන්න",
-  },
-  "Khmer": {
-    subject: "{name}, មិនបានជួបគ្នាប៉ុន្មានថ្ងៃ ប៉ុន្តែ Koko ជឿលើអ្នក!",
-    body: "មេរៀនមួយក៏អាចរៀនបានច្រើនដែរ។",
-    cta_text: "ចាប់ផ្តើមឥឡូវ",
-    greeting: "រៀនភាសាកូរ៉េថ្ងៃនេះ!",
-    unsubscribe_notice: "អ៊ីមែលនេះត្រូវបានផ្ញើព្រោះអ្នកបានយល់ព្រមទទួលអ៊ីមែលជូនដំណឹងពី {{brand_name}}។",
-    unsubscribe_text: "ឈប់ជាវ",
-  },
-  "Lao": {
-    subject: "{name}, ບໍ່ໄດ້ພົບກັນຫຼາຍມື້ ແຕ່ Koko ເຊື່ອໃນເຈົ້າ!",
-    body: "ພຽງບົດຮຽນດຽວກໍຮຽນໄດ້ຫຼາຍແລ້ວ.",
-    cta_text: "ເລີ່ມຕອນນີ້",
-    greeting: "ຮຽນພາສາເກົາຫຼີມື້ນີ້!",
-    unsubscribe_notice: "ອີເມວນີ້ຖືກສົ່ງເພາະທ່ານຍິນຍອมຮັບອີເມວແຈ້ງເຕືອນຈາກ {{brand_name}}.",
-    unsubscribe_text: "ຍົກເລີກການສະໝັກ",
-  },
-  "Burmese": {
-    subject: "{name}၊ ရက်အနည်းငယ် မတွေ့ဖြစ်ပေမယ့် Koko က မင်းကို ယုံကြည်တယ်!",
-    body: "သင်ခန်းစာတစ်ခုတည်းနဲ့တောင် အများကြီး သင်ယူနိုင်ပါတယ်။",
-    cta_text: "ယခုစတင်ပါ",
-    greeting: "ယနေ့ ကိုရီးယားစာ လေ့လာပါ!",
-    unsubscribe_notice: "ဤအီးမေးလ်သည် {{brand_name}} မှ အကြောင်းကြားချက်များ လက်ခံရန် သင်သဘောတူထားသောကြောင့် ပို့ပေးခြင်းဖြစ်ပါသည်။",
-    unsubscribe_text: "စာရင်းမှ ထွက်ရန်",
-  },
-  "Mongolian": {
-    subject: "{name}, хэдэн хоног уулзаагүй ч Koko чамд итгэдэг!",
-    body: "Ганц хичээлээр ч маш их зүйл сурч болно.",
-    cta_text: "Одоо эхлэх",
-    greeting: "Өнөөдөр солонгос хэл сур!",
-    unsubscribe_notice: "Энэ имэйлийг {{brand_name}}-ийн мэдэгдлийн имэйл хүлээн авахыг зөвшөөрсөн тул илгээсэн болно.",
-    unsubscribe_text: "Захиалга цуцлах",
-  },
-  "Georgian": {
-    subject: "{name}, რამდენიმე დღეა არ გვინახავთ, მაგრამ Koko გენდობათ!",
-    body: "ერთი გაკვეთილიც კი ბევრს გასწავლით.",
-    cta_text: "დაიწყეთ ახლავე",
-    greeting: "ისწავლეთ კორეული ენა დღეს!",
-    unsubscribe_notice: "ეს ელ-ფოსტა გამოგეგზავნათ, რადგან დათანხმდით {{brand_name}}-ის შეტყობინებების მიღებას.",
-    unsubscribe_text: "გამოწერის გაუქმება",
-  },
-  "Armenian": {
-    subject: "{name}, մի քանի օր չենք տեսել, բայց Koko-ն վստահում է քեզ!",
-    body: "Նույնիսկ մեկ դասը կարող է շատ բան սովորեցնել.",
-    cta_text: "Սկսեք հիմա",
-    greeting: "Սովորեք կորեական այսօր!",
-    unsubscribe_notice: "Սույն նամակը ուղարկվել է, քանի դուք համաձայնել եք ստանալ {{brand_name}}-ի ծանուցումները.",
-    unsubscribe_text: "Հրաժարվել",
-  },
-  "Azerbaijani": {
-    subject: "{name}, bir neçə gündür görüşmədik, amma Koko sənə inanır!",
-    body: "Bir dərs belə sənə çox şey öyrədə bilər.",
-    cta_text: "İndi başla",
-    greeting: "Bu gün Koreya dili öyrən!",
-    unsubscribe_notice: "Bu e-poçt {{brand_name}} bildiriş e-poçtlarını almağa razılıq verdiyiniz üçün göndərilmişdir.",
-    unsubscribe_text: "Abunəlikdən çıx",
-  },
-  "Kazakh": {
-    subject: "{name}, бірнеше күн кездеспедік, бірақ Koko саған сенеді!",
-    body: "Бір сабақтың өзі көп нәрсе үйретеді.",
-    cta_text: "Қазір бастау",
-    greeting: "Бүгін корей тілін үйреніңіз!",
-    unsubscribe_notice: "Бұл хат {{brand_name}} хабарландыру хаттарын алуға келіскеніңіз үшін жіберілді.",
-    unsubscribe_text: "Жазылудан бас тарту",
-  },
-  "Uzbek": {
-    subject: "{name}, bir necha kun ko'rishmaganmiz, lekin Koko senga ishonadi!",
-    body: "Bitta dars ham ko'p narsa o'rgatishi mumkin.",
-    cta_text: "Hozir boshlash",
-    greeting: "Bugun koreys tilini o'rganing!",
-    unsubscribe_notice: "Ushbu email {{brand_name}} bildirishnomalarini olishga rozilik berganingiz uchun yuborildi.",
-    unsubscribe_text: "Obunani bekor qilish",
-  },
-  "Kyrgyz": {
-    subject: "{name}, бир нече күн жолукпадык, бирок Koko сага ишенет!",
-    body: "Бир эле сабак көп нерсе үйрөтөт.",
-    cta_text: "Азыр баштоо",
-    greeting: "Бүгүн корей тилин үйрөнүңүз!",
-    unsubscribe_notice: "Бул кат {{brand_name}} эскертме каттарын алууга макул болгонуңуз үчүн жөнөтүлдү.",
-    unsubscribe_text: "Жазылуудан баш тартуу",
-  },
-  "Tajik": {
-    subject: "{name}, якчанд рӯз надидем, аммо Koko ба ту боварӣ дорад!",
-    body: "Танҳо як дарс ҳам бисёр чиз омӯзонда метавонад.",
-    cta_text: "Ҳозир оғоз кунед",
-    greeting: "Имрӯз забони кореягиро омӯзед!",
-    unsubscribe_notice: "Ин мактуб ирсол шуд, зеро шумо ба гирифтани огоҳиҳо аз {{brand_name}} розигӣ додед.",
-    unsubscribe_text: "Обуна лағв",
-  },
-  "Turkmen": {
-    subject: "{name}, birnäçe gün görüşmedik, ýöne Koko saňa ynanýar!",
-    body: "Bir sapak hem köp zat öwredip biler.",
-    cta_text: "Häzir başla",
-    greeting: "Şu gün koreý dilini öwren!",
-    unsubscribe_notice: "Bu e-poçta {{brand_name}} habarnamalaryny almaga razyçylygyňyz üçin iberildi.",
-    unsubscribe_text: "Abunalygy ýatyrmak",
-  },
-  "Dari": {
-    subject: "{name}، چند روز ندیدیمت، ولی Koko به تو باور داره!",
-    body: "حتی یک درس هم می‌تانه خیلی چیزها یادت بته.",
-    cta_text: "حالی شروع کو",
-    greeting: "امروز کوریایی یاد بگیر!",
-    unsubscribe_notice: "این ایمیل فرستاده شده چون شما موافقت کردید که اعلان‌های {{brand_name}} را دریافت کنید.",
-    unsubscribe_text: "لغو اشتراک",
-  },
-  "Swahili": {
-    subject: "{name}, hatujaonana siku chache, lakini Koko anakuamini!",
-    body: "Somo moja tu linaweza kukufundisha mengi.",
-    cta_text: "Anza sasa",
-    greeting: "Jifunze Kikorea leo!",
-    unsubscribe_notice: "Barua pepe hii imetumwa kwa sababu ulikubali kupokea arifa kutoka {{brand_name}}.",
-    unsubscribe_text: "Acha kupokea",
-  },
-  "Amharic": {
-    subject: "{name}፣ ለጥቂት ቀናት አልተገናኘንም፣ ግን Koko በእርስዎ ያምናል!",
-    body: "አንድ ትምህርት ብቻ እንኳን ብዙ ሊያስተምር ይችላል።",
-    cta_text: "አሁን መጀመር",
-    greeting: "ዛሬ ኮሪያንኛ ተማሩ!",
-    unsubscribe_notice: "ይህ ኢሜይል የተላከው ከ{{brand_name}} የማሳወቂያ ኢሜይሎችን ለመቀበል ስለተስማሙ ነው።",
-    unsubscribe_text: "ምዝገባ ሰርዝ",
-  },
-  "Somali": {
-    subject: "{name}, dhawr maalmood ma is arkin, laakiin Koko way ku aamintahay!",
-    body: "Hal cashir oo keliya ayaa wax badan ku baran kara.",
-    cta_text: "Hadda bilow",
-    greeting: "Maanta Kuuriyaan baro!",
-    unsubscribe_notice: "Emailkan waxaa loo diray sababtoo ah waxaad oggolaatay inaad hesho ogeysiisyada {{brand_name}}.",
-    unsubscribe_text: "Ka bax liiska",
-  },
-  "Malagasy": {
-    subject: "{name}, andro vitsivitsy tsy nihaona isika, fa matoky anao ny Koko!",
-    body: "Lesona iray monja dia efa mampianatra be dia be.",
-    cta_text: "Manomboka izao",
-    greeting: "Mianara teny Koreana androany!",
-    unsubscribe_notice: "Ity mailaka ity dia nalefa satria nanaiky handray fampandrenesana avy amin'ny {{brand_name}} ianao.",
-    unsubscribe_text: "Miala amin'ny lisitra",
-  },
-  "Dzongkha": {
-    subject: "{name}, ཉིན་གྲངས་ཏོག་ཏོག་མ་མཐོང་རུང་ Koko གིས་ཁྱོད་ལུ་ཡིད་ཆེས་བསྐྱེདཔ་ཨིན!",
-    body: "སློབ་ཚན་གཅིག་གིས་ཡང་མང་སུ་སྦྱང་ཚུགས།",
-    cta_text: "ད་ལྟོ་འགོ་བཙུགས",
-    greeting: "ད་རིས་ཀོ་རི་ཡའི་སྐད་སྦྱང!",
-    unsubscribe_notice: "ཨི་མེལ་ཡིག་འདི་ {{brand_name}} གིས་གསལ་ཡིག་ལེན་བསྐུར་བཀོད་གནང་བཛུགས་པ་ཡིན།",
-    unsubscribe_text: "གཚོག་བསྒྱུར",
-  },
-  "Dhivehi": {
-    subject: "{name}، ދުވަސްކޮޅެއް ނުފެނި ތިބެވިއްޖެ، އެކަމަކު Koko ކަލާއަށް އިތުބާރުކުރޭ!",
-    body: "އެންމެ ފިލާވަޅަކުންވެސް ވަރަށް ގިނަ އެއްޗެހި ދަސްކުރެވިދާނެ.",
-    cta_text: "މިހާރު ފަށާ",
-    greeting: "މިއަދު ކޮރެއާ ބަސް ދަސްކުރޭ!",
-    unsubscribe_notice: "މި އިމެއްލް ފޮނުވިފައިވާނީ {{brand_name}} ކުން އެބަލައިގެން ލަބައިގަޓުމަށް ބަދަލުކުރެވިފައިވާތީއެވެ.",
-    unsubscribe_text: "އަންސަބްސްކްރައިބް",
-  },
-  "Fijian": {
-    subject: "{name}, e sega ni da sota e na vica na siga, ia e vakabauta iko na Koko!",
-    body: "E dua ga na lesoni e rawa ni vakavulici iko e levu.",
-    cta_text: "Tekivaka qo",
-    greeting: "Vulica na vosa vaKorea nikua!",
-    unsubscribe_notice: "Na i-vola-leka oqo e vakarautaki mai ni o duavata mo rawata na veitalanoa mai na {{brand_name}}.",
-    unsubscribe_text: "Vakacegu mai",
-  },
-  "Samoan": {
-    subject: "{name}, e le'i feiloai i ni nai aso, ae talitonu Koko ia te oe!",
-    body: "E tasi lava le lesona e mafai ona e a'oa'o ai le tele.",
-    cta_text: "Amata nei",
-    greeting: "A'oa'o le gagana Korea i le aso nei!",
-    unsubscribe_notice: "O lenei imeli na lafoina aua na e malie e maua fa'aaliga mai le {{brand_name}}.",
-    unsubscribe_text: "Fa'amuta le lesitala",
-  },
-  "Belarusian": {
-    subject: "{name}, некалькі дзён не бачыліся, але Koko верыць у цябе!",
-    body: "Нават адзін урок можа многаму навучыць.",
-    cta_text: "Пачаць зараз",
-    greeting: "Вучыце карэйскую мову сёння!",
-    unsubscribe_notice: "Гэты ліст адпраўлены, бо ты пагадзіўся атрымліваць апавяшчэнні ад {{brand_name}}.",
-    unsubscribe_text: "Адпісацца",
+    day_1: {
+      subject:  "{name}, Koko t'attend 🥺",
+      greeting: "Juste 5 minutes !",
+      body:     "Une leçon et Koko sourit à nouveau. Ne casse pas ta série !",
+      cta_text: "Pratiquer maintenant",
+    },
+    day_3: {
+      subject:  "{name}, Koko s'inquiète 😟",
+      greeting: "3 jours sans coréen.",
+      body:     "Ton cerveau oublie déjà des mots. 5 minutes suffisent pour les retrouver.",
+      cta_text: "Je suis revenu(e) !",
+    },
+    day_7: {
+      subject:  "{name}, une semaine entière 💔",
+      greeting: "Tu manques énormément à Koko.",
+      body:     "Une semaine peut devenir un mois. Ne laissons pas ça arriver. Une leçon aujourd'hui.",
+      cta_text: "Sauver la série",
+    },
+    day_14: {
+      subject:  "{name}, ces rappels ne semblent pas marcher... 😬",
+      greeting: "On arrête les emails ?",
+      body:     "Deux semaines. Si tu es encore là, reviens. Koko attend toujours.",
+      cta_text: "Je suis encore là",
+    },
   },
 };
 
-// 언어명으로 콘텐츠 가져오기 (없으면 기본 영어)
-export function getEmailContent(language: string): EmailContent {
-  return EMAIL_CONTENT[language] || EMAIL_CONTENT[DEFAULT_LANGUAGE];
+// ------------------------------------------------------------
+// Lookup helpers
+// ------------------------------------------------------------
+
+const DAY_KEY: Record<RetentionDay, keyof LanguagePack> = {
+  1:  "day_1",
+  3:  "day_3",
+  7:  "day_7",
+  14: "day_14",
+};
+
+/** Flat struct used by the renderer: day content + hero image (resolved) + unsubscribe copy. */
+export interface RenderContent {
+  subject:            string;
+  body:               string;
+  greeting:           string;
+  cta_text:           string;
+  hero_image_url:     string; // 항상 세팅됨 (undefined면 DEFAULT_HERO_IMAGE)
+  unsubscribe_notice: string;
+  unsubscribe_text:   string;
+}
+
+/**
+ * 언어 + day 조합으로 최종 렌더링용 콘텐츠를 반환.
+ * 지원하지 않는 언어면 DEFAULT_LANGUAGE로 폴백.
+ * hero_image_url은 day별로 설정돼있으면 사용, 없으면 DEFAULT_HERO_IMAGE로 폴백.
+ */
+export function getEmailContent(
+  language: string,
+  day: RetentionDay,
+): RenderContent {
+  const pack =
+    (EMAIL_CONTENT as Record<string, LanguagePack>)[language] ??
+    EMAIL_CONTENT[DEFAULT_LANGUAGE];
+  const dayContent = pack[DAY_KEY[day]] as DayContent;
+  return {
+    subject:            dayContent.subject,
+    body:               dayContent.body,
+    greeting:           dayContent.greeting,
+    cta_text:           dayContent.cta_text,
+    hero_image_url:     dayContent.hero_image_url ?? DEFAULT_HERO_IMAGE,
+    unsubscribe_notice: pack.unsubscribe_notice,
+    unsubscribe_text:   pack.unsubscribe_text,
+  };
 }
